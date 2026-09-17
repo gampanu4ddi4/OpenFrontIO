@@ -38,6 +38,11 @@ export class UnitDisplay extends LitElement implements Controller {
   private keybinds: Record<string, { value: string; key: string }> = {};
   private _cities = 0;
   private _warships = 0;
+  private _submarines = 0;
+  private _carriers = 0;
+  private _airbases = 0;
+  private _fighters = 0;
+  private _bombers = 0;
   private _factories = 0;
   private _missileSilo = 0;
   private _port = 0;
@@ -101,9 +106,18 @@ export class UnitDisplay extends LitElement implements Controller {
           (player?.units(UnitType.MissileSilo).length ?? 0) > 0
         );
       case UnitType.Warship:
+      case UnitType.Submarine:
+      case UnitType.Carrier:
         return (
           this.cost(item) <= (player?.gold() ?? 0n) &&
           (player?.units(UnitType.Port).length ?? 0) > 0
+        );
+      case UnitType.Fighter:
+      case UnitType.Bomber:
+        return (
+          this.cost(item) <= (player?.gold() ?? 0n) &&
+          ((player?.units(UnitType.Airbase).length ?? 0) > 0 ||
+            (player?.units(UnitType.Carrier).length ?? 0) > 0)
         );
       default:
         return this.cost(item) <= (player?.gold() ?? 0n);
@@ -123,6 +137,11 @@ export class UnitDisplay extends LitElement implements Controller {
     this._samLauncher = player.totalUnitLevels(UnitType.SAMLauncher);
     this._factories = player.totalUnitLevels(UnitType.Factory);
     this._warships = player.totalUnitLevels(UnitType.Warship);
+    this._submarines = player.totalUnitLevels(UnitType.Submarine);
+    this._carriers = player.totalUnitLevels(UnitType.Carrier);
+    this._airbases = player.totalUnitLevels(UnitType.Airbase);
+    this._fighters = player.totalUnitLevels(UnitType.Fighter);
+    this._bombers = player.totalUnitLevels(UnitType.Bomber);
     this.requestUpdate();
   }
 
@@ -142,7 +161,7 @@ export class UnitDisplay extends LitElement implements Controller {
 
     return html`
       <div class="border-t border-white/10 p-0.5 w-full">
-        <div class="grid grid-rows-1 grid-flow-col gap-0.5 w-fit mx-auto">
+        <div class="grid grid-cols-8 gap-0.5 w-fit mx-auto">
           ${this.renderUnitItem(
             cityIcon,
             this._cities,
@@ -193,6 +212,36 @@ export class UnitDisplay extends LitElement implements Controller {
             this.keybinds["buildWarship"]?.key ?? "7",
           )}
           ${this.renderUnitItem(
+            warshipIcon,
+            this._submarines,
+            UnitType.Submarine,
+            "submarine",
+          )}
+          ${this.renderUnitItem(
+            warshipIcon,
+            this._carriers,
+            UnitType.Carrier,
+            "carrier",
+          )}
+          ${this.renderUnitItem(
+            factoryIcon,
+            this._airbases,
+            UnitType.Airbase,
+            "airbase",
+          )}
+          ${this.renderUnitItem(
+            warshipIcon,
+            this._fighters,
+            UnitType.Fighter,
+            "fighter",
+          )}
+          ${this.renderUnitItem(
+            atomBombIcon,
+            this._bombers,
+            UnitType.Bomber,
+            "bomber",
+          )}
+          ${this.renderUnitItem(
             atomBombIcon,
             null,
             UnitType.AtomBomb,
@@ -223,7 +272,7 @@ export class UnitDisplay extends LitElement implements Controller {
     number: number | null,
     unitType: PlayerBuildableUnitType,
     structureKey: string,
-    hotkey: string,
+    hotkey: string = "",
   ) {
     if (this.game.config().isUnitDisabled(unitType)) {
       return html``;
@@ -255,7 +304,7 @@ export class UnitDisplay extends LitElement implements Controller {
                 <div class="font-bold text-sm mb-1">
                   ${translateText(
                     "unit_type." + structureKey,
-                  )}${` [${displayHotkey}]`}
+                  )}${displayHotkey ? ` [${displayHotkey}]` : ""}
                 </div>
                 <div class="p-2">
                   ${translateText("build_menu.desc." + structureKey)}
@@ -303,7 +352,18 @@ export class UnitDisplay extends LitElement implements Controller {
                 );
                 break;
               case UnitType.Warship:
+              case UnitType.Submarine:
+              case UnitType.Carrier:
                 this.eventBus?.emit(new ToggleStructureEvent([UnitType.Port]));
+                break;
+              case UnitType.Fighter:
+              case UnitType.Bomber:
+                this.eventBus?.emit(
+                  new ToggleStructureEvent([
+                    UnitType.Airbase,
+                    UnitType.Carrier,
+                  ]),
+                );
                 break;
               default:
                 this.eventBus?.emit(new ToggleStructureEvent([unitType]));
@@ -312,9 +372,13 @@ export class UnitDisplay extends LitElement implements Controller {
           @mouseleave=${() =>
             this.eventBus?.emit(new ToggleStructureEvent(null))}
         >
-          ${html`<div class="ml-0.5 text-[10px] relative -top-1 text-gray-400">
-            ${displayHotkey}
-          </div>`}
+          ${displayHotkey
+            ? html`<div
+                class="ml-0.5 text-[10px] relative -top-1 text-gray-400"
+              >
+                ${displayHotkey}
+              </div>`
+            : null}
           <div class="flex items-center gap-0.5 pt-0.5">
             <img src=${icon} alt=${structureKey} class="align-middle size-5" />
             ${number !== null

@@ -2095,6 +2095,7 @@
   },
   "reputation": {
     "title": "International Reputation",
+    "short": "REP",
     "trusted": "Trusted",
     "neutral": "Neutral",
     "bad_state": "Bad State",
@@ -2102,6 +2103,12 @@
     "non_hostile_nuke": "Nuclear strike against a non-hostile nation",
     "support": "Meaningful support sent to an ally under attack",
     "recovery": "Reputation recovery"
+  },
+  "strategic_control": {
+    "sea": "Controlled sea sectors",
+    "sea_short": "SEA",
+    "air": "Controlled air sectors",
+    "air_short": "AIR"
   },
   "update_available": {
     "desktop": "A new version of OpenFront is available. It will download in the background; reload from the update bar once it is ready.",

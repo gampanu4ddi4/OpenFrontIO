@@ -29,4 +29,18 @@ export class StrategicControlView {
   at(sectorIndex: number, domain: ControlDomain): SectorControl | undefined {
     return this.sectors.get(`${domain}:${sectorIndex}`);
   }
+
+  controlledCount(leaderSmallID: number, domain: ControlDomain): number {
+    let count = 0;
+    for (const control of this.sectors.values()) {
+      if (
+        control.domain === domain &&
+        control.status === "controlled" &&
+        control.leaderSmallID === leaderSmallID
+      ) {
+        count++;
+      }
+    }
+    return count;
+  }
 }

@@ -60,6 +60,15 @@ export class ControlPanel extends LitElement implements Controller {
   private _attackingTroops: number = 0;
 
   @state()
+  private _reputation: number = 0;
+
+  @state()
+  private _seaControlSectors: number = 0;
+
+  @state()
+  private _airControlSectors: number = 0;
+
+  @state()
   private _goldGain: bigint | null = null;
   @state()
   private _goldGainPulseId: number = 0;
@@ -137,6 +146,15 @@ export class ControlPanel extends LitElement implements Controller {
     this._maxTroops = config.maxTroops(player);
     this._gold = player.gold();
     this._troops = player.troops();
+    this._reputation = player.internationalReputation();
+    this._seaControlSectors = this.game.strategicControl.controlledCount(
+      player.smallID(),
+      "sea",
+    );
+    this._airControlSectors = this.game.strategicControl.controlledCount(
+      player.smallID(),
+      "air",
+    );
     this._attackingTroops = player
       .outgoingAttacks()
       .map((a) => a.troops)
@@ -593,6 +611,29 @@ export class ControlPanel extends LitElement implements Controller {
           class="flex-1 h-1.5 accent-aquarius cursor-pointer"
         />
       </div>
+      <!-- Row 3: strategic control and international reputation -->
+      <div
+        class="flex items-center justify-center gap-1.5 mt-1 text-[10px] font-semibold"
+        translate="no"
+      >
+        <span
+          class="border border-slate-500 rounded px-1 py-0.5 text-slate-200"
+          title=${translateText("reputation.title")}
+          >${translateText("reputation.short")}: ${this._reputation}</span
+        >
+        <span
+          class="border border-cyan-500/70 rounded px-1 py-0.5 text-cyan-300"
+          title=${translateText("strategic_control.sea")}
+          >${translateText("strategic_control.sea_short")}:
+          ${this._seaControlSectors}</span
+        >
+        <span
+          class="border border-sky-400/70 rounded px-1 py-0.5 text-sky-300"
+          title=${translateText("strategic_control.air")}
+          >${translateText("strategic_control.air_short")}:
+          ${this._airControlSectors}</span
+        >
+      </div>
     `;
   }
 
@@ -659,6 +700,22 @@ export class ControlPanel extends LitElement implements Controller {
             class="w-full h-1.5 accent-aquarius cursor-pointer"
           />
         </div>
+      </div>
+      <div
+        class="flex items-center justify-center gap-1 mt-1 text-[9px] font-semibold"
+        translate="no"
+      >
+        <span class="text-slate-200"
+          >${translateText("reputation.short")}: ${this._reputation}</span
+        >
+        <span class="text-cyan-300"
+          >${translateText("strategic_control.sea_short")}:
+          ${this._seaControlSectors}</span
+        >
+        <span class="text-sky-300"
+          >${translateText("strategic_control.air_short")}:
+          ${this._airControlSectors}</span
+        >
       </div>
     `;
   }
