@@ -93,7 +93,10 @@ export class WorkerClient {
         id: messageId,
         gameStartInfo: this.gameStartInfo,
         clientID: this.clientID,
-        cdnBase: getCdnBase(),
+        // Inline workers run from a blob: URL. A root-relative asset URL such
+        // as /_assets/maps/... cannot be resolved by fetch() from that base,
+        // so self-hosted deployments without a CDN must pass the page origin.
+        cdnBase: getCdnBase() || globalThis.location.origin,
       });
 
       setTimeout(() => {
