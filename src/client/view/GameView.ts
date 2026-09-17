@@ -44,6 +44,7 @@ import { STRUCTURE_TYPES } from "../render/types";
 import { resolveTeamClanTag } from "../Utils";
 import type { CosmeticVisibility } from "./CosmeticVisibility";
 import { PlayerView } from "./PlayerView";
+import { StrategicControlView } from "./StrategicControlView";
 import { UnitView } from "./UnitView";
 
 function readCosmeticVisibility(): CosmeticVisibility {
@@ -73,6 +74,7 @@ type TrainPlanState = {
 };
 
 export class GameView implements GameMap {
+  readonly strategicControl = new StrategicControlView();
   private lastUpdate: GameUpdateViewData | null;
   private startTick: Tick | null = null;
   private smallIDToID = new Map<number, PlayerID>();
@@ -278,6 +280,7 @@ export class GameView implements GameMap {
   }
 
   public update(gu: GameUpdateViewData) {
+    this.strategicControl.applyPacked(gu.packedStrategicControlUpdates);
     // Unit set/ownership changes below; rebuild the owner index on demand.
     this._unitsByOwnerStale = true;
 

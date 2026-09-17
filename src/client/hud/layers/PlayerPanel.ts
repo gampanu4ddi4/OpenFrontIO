@@ -815,6 +815,63 @@ export class PlayerPanel extends LitElement implements Controller {
     `;
   }
 
+  private renderReputation(player: PlayerView) {
+    const score = player.internationalReputation();
+    const threshold = this.g.config().badStateReputationThreshold();
+    const statusKey =
+      score <= threshold
+        ? "reputation.bad_state"
+        : score > 0
+          ? "reputation.trusted"
+          : "reputation.neutral";
+    const scoreClass =
+      score <= threshold
+        ? "text-red-400"
+        : score > 0
+          ? "text-emerald-400"
+          : score < 0
+            ? "text-amber-400"
+            : "text-zinc-300";
+    const events = player.recentReputationEvents().slice(-3).reverse();
+
+    return html`
+      <div class="select-none">
+        <div class="flex items-center justify-between gap-4">
+          <span class="font-semibold text-zinc-300">
+            ${translateText("reputation.title")}
+          </span>
+          <span class="font-bold tabular-nums ${scoreClass}">
+            ${score > 0 ? "+" : ""}${score}
+            · ${translateText(statusKey)}
+          </span>
+        </div>
+        ${events.length === 0
+          ? ""
+          : html`<ul class="mt-2 space-y-1 text-[12px] text-zinc-400">
+              ${events.map((event) => {
+                const target =
+                  event.targetSmallID === undefined
+                    ? null
+                    : this.g.playerBySmallID(event.targetSmallID);
+                const targetName = target?.isPlayer()
+                  ? ` · ${target.displayName()}`
+                  : "";
+                return html`<li class="flex justify-between gap-3">
+                  <span class="truncate">
+                    ${translateText(`reputation.${event.reason}`)}${targetName}
+                  </span>
+                  <span class="tabular-nums ${event.delta >= 0
+                    ? "text-emerald-400"
+                    : "text-red-400"}">
+                    ${event.delta > 0 ? "+" : ""}${event.delta}
+                  </span>
+                </li>`;
+              })}
+            </ul>`}
+      </div>
+    `;
+  }
+
   private renderActions(my: PlayerView, other: PlayerView) {
     const myPlayer = this.g.myPlayer();
     const canDonateGold = this.actions?.interaction?.canDonateGold;
@@ -1117,6 +1174,11 @@ export class PlayerPanel extends LitElement implements Controller {
 
                     <!-- Stats: betrayals / trading -->
                     ${this.renderStats(other, viewer)}
+
+                    <ui-divider></ui-divider>
+
+                    <!-- International reputation -->
+                    ${this.renderReputation(other)}
 
                     <ui-divider></ui-divider>
 

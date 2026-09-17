@@ -1,4 +1,4 @@
-import { Execution, Game, Unit, UnitType } from "../game/Game";
+import { Execution, Game, PlayerType, Unit, UnitType } from "../game/Game";
 import { PseudoRandom } from "../PseudoRandom";
 import { TradeShipExecution } from "./TradeShipExecution";
 import { TrainStationExecution } from "./TrainStationExecution";
@@ -125,6 +125,14 @@ export class PortExecution implements Execution {
     for (const [i, otherPort] of ports.entries()) {
       const expanded = new Array(otherPort.level()).fill(otherPort);
       weightedPorts.push(...expanded);
+      // Nation-owned ports give reputable partners one small extra weight;
+      // human/bot trade selection remains unchanged.
+      if (
+        this.port.owner().type() === PlayerType.Nation &&
+        otherPort.owner().internationalReputation() >= 25
+      ) {
+        weightedPorts.push(...expanded);
+      }
       const tooClose =
         this.mg.manhattanDist(this.port!.tile(), otherPort.tile()) <
         this.mg.config().tradeShipShortRangeDebuff();

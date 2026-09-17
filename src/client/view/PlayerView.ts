@@ -93,6 +93,8 @@ function stateFromUpdate(pu: PlayerUpdate): PlayerState {
     isDecaying: pu.isDecaying ?? false,
     markedDoomsdayClockTick: pu.markedDoomsdayClockTick ?? -1,
     betrayals: pu.betrayals!,
+    internationalReputation: pu.internationalReputation ?? 0,
+    recentReputationEvents: pu.recentReputationEvents?.slice() ?? [],
     hasSpawned: pu.hasSpawned!,
     spawnTile: pu.spawnTile,
     lastDeleteUnitTick: pu.lastDeleteUnitTick!,
@@ -689,6 +691,12 @@ export class PlayerView {
   }
   betrayals(): number {
     return this.state.betrayals;
+  }
+  internationalReputation(): number {
+    return this.state.internationalReputation;
+  }
+  recentReputationEvents() {
+    return this.state.recentReputationEvents;
   }
   outgoingEmojis(): EmojiMessage[] {
     return this.state.outgoingEmojis;

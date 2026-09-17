@@ -1,4 +1,6 @@
+import type { AttackUpdate } from "../../../core/game/GameUpdates";
 import type { TileRef } from "../../../core/game/GameMap";
+import type { ReputationEvent } from "../../../core/game/Reputation";
 
 /** TrainType enum — numeric values matching UnitState.trainType. */
 export enum TrainType {
@@ -81,6 +83,8 @@ export interface PlayerState {
   isDecaying: boolean;
   markedDoomsdayClockTick: number;
   betrayals: number;
+  internationalReputation: number;
+  recentReputationEvents: readonly ReputationEvent[];
   hasSpawned: boolean;
   /** TileRef the player picked as their spawn (undefined if not yet spawned). */
   spawnTile?: number;

@@ -16,6 +16,7 @@
 
 import type { GhostPreviewData, RendererConfig, UnitState } from "../../types";
 import {
+  UT_AIRBASE,
   UT_CITY,
   UT_DEFENSE_POST,
   UT_FACTORY,
@@ -54,6 +55,10 @@ const STRUCTURE_ORDER = [
   UT_SAM_LAUNCHER,
   UT_MISSILE_SILO,
 ] as const;
+
+const STRUCTURE_FALLBACKS: Readonly<Record<string, number>> = {
+  [UT_AIRBASE]: STRUCTURE_ORDER.indexOf(UT_FACTORY),
+};
 
 const ATLAS_COLS = STRUCTURE_ORDER.length;
 
@@ -147,6 +152,11 @@ export class StructurePass {
       );
       if (col >= 0) {
         this.typeToAtlasCol.set(header.unitTypes[i], col);
+      } else {
+        const fallbackCol = STRUCTURE_FALLBACKS[header.unitTypes[i]];
+        if (fallbackCol !== undefined) {
+          this.typeToAtlasCol.set(header.unitTypes[i], fallbackCol);
+        }
       }
     }
 

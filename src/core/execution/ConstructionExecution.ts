@@ -6,6 +6,7 @@ import { FactoryExecution } from "./FactoryExecution";
 import { MirvExecution } from "./MIRVExecution";
 import { MissileSiloExecution } from "./MissileSiloExecution";
 import { NukeExecution } from "./NukeExecution";
+import { NavalUnitExecution } from "./NavalUnitExecution";
 import { PortExecution } from "./PortExecution";
 import { SAMLauncherExecution } from "./SAMLauncherExecution";
 import { WarshipExecution } from "./WarshipExecution";
@@ -130,6 +131,40 @@ export class ConstructionExecution implements Execution {
           new WarshipExecution({ owner: player, patrolTile: this.tile }),
         );
         break;
+      case UnitType.Submarine:
+      case UnitType.Carrier: {
+        const spawn = player.canBuild(this.constructionType, this.tile);
+        if (spawn !== false) {
+          const unit = player.buildUnit(this.constructionType, spawn, {
+            patrolTile: this.tile,
+          });
+          this.mg.addExecution(new NavalUnitExecution(unit));
+        }
+        break;
+      }
+      case UnitType.Fighter:
+      case UnitType.Bomber: {
+        if (player.canBuild(this.constructionType, this.tile) === false) {
+          break;
+        }
+        const platform = player
+          .units([UnitType.Airbase, UnitType.Carrier])
+          .find(
+            (unit) =>
+              unit.tile() === this.tile &&
+              unit.isActive() &&
+              !unit.isUnderConstruction() &&
+              (unit.type() !== UnitType.Carrier ||
+                this.constructionType !== UnitType.Bomber),
+          );
+        if (platform !== undefined) {
+          player.buildUnit(this.constructionType, platform.tile(), {
+            platformUnitId: platform.id(),
+            targetTile: this.tile,
+          });
+        }
+        break;
+      }
       case UnitType.Port:
         this.mg.addExecution(new PortExecution(this.structure!));
         break;
@@ -150,6 +185,8 @@ export class ConstructionExecution implements Execution {
       case UnitType.Factory:
         this.mg.addExecution(new FactoryExecution(this.structure!));
         break;
+      case UnitType.Airbase:
+        break;
       default:
         console.warn(
           `unit type ${this.constructionType} cannot be constructed`,
@@ -166,6 +203,7 @@ export class ConstructionExecution implements Execution {
       case UnitType.SAMLauncher:
       case UnitType.City:
       case UnitType.Factory:
+      case UnitType.Airbase:
         return true;
       default:
         return false;

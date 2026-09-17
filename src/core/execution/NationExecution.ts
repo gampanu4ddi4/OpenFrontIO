@@ -15,6 +15,7 @@ import { TileRef } from "../game/GameMap";
 import { PseudoRandom } from "../PseudoRandom";
 import { GameID } from "../Schemas";
 import { assertNever, simpleHash } from "../Util";
+import { NationAirBehavior } from "./nation/NationAirBehavior";
 import { NationAllianceBehavior } from "./nation/NationAllianceBehavior";
 import { NationEmojiBehavior } from "./nation/NationEmojiBehavior";
 import { NationMIRVBehavior } from "./nation/NationMIRVBehavior";
@@ -36,6 +37,7 @@ export class NationExecution implements Execution {
   private warshipBehavior!: NationWarshipBehavior;
   private nukeBehavior!: NationNukeBehavior;
   private structureBehavior!: NationStructureBehavior;
+  private airBehavior!: NationAirBehavior;
   private mg: Game;
   private player: Player | null = null;
 
@@ -202,6 +204,7 @@ export class NationExecution implements Execution {
     this.allianceBehavior.handleAllianceExtensionRequests();
     this.mirvBehavior.considerMIRV();
     this.structureBehavior.handleStructures();
+    this.airBehavior.handleAirForce();
     this.warshipBehavior.maybeSpawnWarship();
     this.handleEmbargoesToHostileNations();
     this.attackBehavior.maybeAttack();
@@ -257,6 +260,7 @@ export class NationExecution implements Execution {
       this.mg,
       this.player,
     );
+    this.airBehavior = new NationAirBehavior(this.mg, this.player);
     this.behaviorsInitialized = true;
   }
 

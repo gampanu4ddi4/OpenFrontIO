@@ -47,6 +47,7 @@ import { RailNetwork } from "./RailNetwork";
 import { createRailNetwork } from "./RailNetworkImpl";
 import { Stats } from "./Stats";
 import { StatsImpl } from "./StatsImpl";
+import { StrategicControlGrid } from "./StrategicControlGrid";
 import { assignTeams, resolveTeamsList } from "./TeamAssignment";
 import { TerraNulliusImpl } from "./TerraNulliusImpl";
 import { UnitGrid, UnitPredicate } from "./UnitGrid";
@@ -103,6 +104,8 @@ export class GameImpl implements Game {
   private planDrivenUnitIds = new Set<number>();
   private unitGrid: UnitGrid;
   private _unitMap = new Map<number, Unit>();
+  private strategicControlGrid: StrategicControlGrid;
+  private packedStrategicControlUpdates: Uint32Array | undefined;
 
   private playerTeams: Team[] = [];
   private botTeam: Team = ColoredTeams.Bot;
@@ -134,6 +137,18 @@ export class GameImpl implements Game {
     this._terraNullius = new TerraNulliusImpl();
     this._width = _map.width();
     this._height = _map.height();
+    const sectorSize = _config.strategicControlSectorSize();
+    this.strategicControlGrid = new StrategicControlGrid(
+      this._width,
+      this._height,
+      sectorSize,
+      _config.minimumControlScore(),
+      _config.controlLeadBasisPoints(),
+      this.seaControlEligibleSectors(
+        sectorSize,
+        _config.minimumSeaControlWaterRatioBasisPoints(),
+      ),
+    );
     this.unitGrid = new UnitGrid(this._map);
     this._waterManager = new WaterManager(
       this._map,
@@ -509,7 +524,11 @@ export class GameImpl implements Game {
 
     this.execs.push(...inited);
     this.unInitExecs = unInited;
+    if (this._ticks % this._config.strategicControlRefreshTicks() === 0) {
+      this.recomputeStrategicControl();
+    }
     for (const player of this._players.values()) {
+      player.recoverInternationalReputation();
       const update = player.toUpdate(
         this.playerStatsQuads,
         this.attackTroopsQuads,
@@ -567,6 +586,108 @@ export class GameImpl implements Game {
     return packed;
   }
 
+  private seaControlEligibleSectors(
+    sectorSize: number,
+    minimumWaterRatioBasisPoints: number,
+  ): ReadonlySet<number> {
+    const columns = Math.ceil(this._width / sectorSize);
+    const waterCounts = new Map<number, number>();
+    const tileCounts = new Map<number, number>();
+    for (let y = 0; y < this._height; y++) {
+      for (let x = 0; x < this._width; x++) {
+        const sector =
+          Math.floor(y / sectorSize) * columns + Math.floor(x / sectorSize);
+        tileCounts.set(sector, (tileCounts.get(sector) ?? 0) + 1);
+        if (this._map.isWater(this._map.ref(x, y))) {
+          waterCounts.set(sector, (waterCounts.get(sector) ?? 0) + 1);
+        }
+      }
+    }
+    const eligible = new Set<number>();
+    for (const [sector, total] of tileCounts) {
+      if (
+        (waterCounts.get(sector) ?? 0) * 10_000 >=
+        total * minimumWaterRatioBasisPoints
+      ) {
+        eligible.add(sector);
+      }
+    }
+    return eligible;
+  }
+
+  private recomputeStrategicControl(): void {
+    const contributors: import("./StrategicControl").ControlContributor[] = [];
+    const teamRepresentatives = new Map<string, number>();
+    for (const player of [...this.players()].sort(
+      (a, b) => a.smallID() - b.smallID(),
+    )) {
+      const team = player.team();
+      if (team !== null && !teamRepresentatives.has(team)) {
+        teamRepresentatives.set(team, player.smallID());
+      }
+    }
+    for (const unit of this.units()) {
+      if (!unit.isActive() || unit.isUnderConstruction()) continue;
+      const score = this._config.strategicControlScore(unit.type());
+      if (score <= 0) continue;
+      const owner = unit.owner();
+      const team = owner.team();
+      const base = {
+        playerID:
+          team === null
+            ? owner.smallID()
+            : (teamRepresentatives.get(team) ?? owner.smallID()),
+        x: this.x(unit.tile()),
+        y: this.y(unit.tile()),
+        score,
+      };
+      if (
+        unit.type() === UnitType.Fighter ||
+        unit.type() === UnitType.Bomber
+      ) {
+        const state = unit.airUnitState().state;
+        if (state !== "ready" && state !== "rearming") {
+          contributors.push({
+            ...base,
+            domain: "air",
+            radiusSectors: unit.type() === UnitType.Fighter ? 1 : 0,
+          });
+        }
+      } else if (unit.type() === UnitType.Airbase) {
+        contributors.push({ ...base, domain: "air" });
+      } else if (unit.type() === UnitType.Carrier) {
+        contributors.push({ ...base, domain: "sea", radiusSectors: 1 });
+      } else {
+        contributors.push({ ...base, domain: "sea" });
+      }
+    }
+    this.strategicControlGrid.recompute(contributors);
+    this.packedStrategicControlUpdates = this.strategicControlGrid.pack();
+  }
+
+  drainPackedStrategicControlUpdates(): Uint32Array | undefined {
+    const packed = this.packedStrategicControlUpdates;
+    this.packedStrategicControlUpdates = undefined;
+    return packed;
+  }
+
+  strategicControlRelationAt(
+    tile: TileRef,
+    domain: "sea" | "air",
+    viewer: Player,
+  ) {
+    return this.strategicControlGrid.relationAt(
+      this.x(tile),
+      this.y(tile),
+      domain,
+      viewer.smallID(),
+      (id) => {
+        const other = this.playerBySmallID(id);
+        return other.isPlayer() && viewer.isFriendly(other);
+      },
+    );
+  }
+
   recordMotionPlan(record: MotionPlanRecord): void {
     switch (record.kind) {
       case "grid":
@@ -612,6 +733,8 @@ export class GameImpl implements Game {
     this._players.forEach((p) => {
       hash += p.hash();
     });
+    const control = this.strategicControlGrid.pack();
+    if (control) for (const lane of control) hash = (hash * 31 + lane) | 0;
     return hash;
   }
 
@@ -820,7 +943,11 @@ export class GameImpl implements Game {
     });
   }
 
-  public breakAlliance(breaker: Player, alliance: MutableAlliance) {
+  public breakAlliance(
+    breaker: Player,
+    alliance: MutableAlliance,
+    cause: "unilateral" | "nuke" = "unilateral",
+  ) {
     let other: Player;
     if (alliance.requestor() === breaker) {
       other = alliance.recipient();
@@ -837,6 +964,12 @@ export class GameImpl implements Game {
     }
 
     this.detachAlliance(alliance);
+
+    // All unilateral betrayal paths reach this policy hook. Nuclear strikes
+    // use their own event and therefore must not also pay the break penalty.
+    if (cause === "unilateral" && !breaker.isOnSameTeam(other)) {
+      breaker.recordAllianceBreakReputation(other);
+    }
 
     this.addUpdate({
       type: GameUpdateType.BrokeAlliance,

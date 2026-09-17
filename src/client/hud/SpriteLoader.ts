@@ -26,6 +26,12 @@ type TrainTypeSprite = (typeof TrainTypeSprite)[keyof typeof TrainTypeSprite];
 const SPRITE_CONFIG: Partial<Record<UnitType | TrainTypeSprite, string>> = {
   [UnitType.TransportShip]: transportShipSprite,
   [UnitType.Warship]: warshipSprite,
+  // Lightweight visible fallbacks; dedicated art can replace these paths
+  // later without changing unit identities or atlas ordering.
+  [UnitType.Submarine]: warshipSprite,
+  [UnitType.Carrier]: warshipSprite,
+  [UnitType.Fighter]: samMissileSprite,
+  [UnitType.Bomber]: atomBombSprite,
   [UnitType.SAMMissile]: samMissileSprite,
   [UnitType.AtomBomb]: atomBombSprite,
   [UnitType.HydrogenBomb]: hydrogenBombSprite,

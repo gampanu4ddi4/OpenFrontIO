@@ -48,21 +48,55 @@ export class NationWarshipBehavior {
       ships.length === 0 &&
       this.player.gold() > this.cost(UnitType.Warship)
     ) {
-      const port = this.random.randElement(ports);
-      const targetTile = this.warshipSpawnTile(port.tile(), 250);
-      if (targetTile === null) {
-        return false;
-      }
-      const canBuild = this.player.canBuild(UnitType.Warship, targetTile);
-      if (canBuild === false) {
-        return false;
-      }
-      this.game.addExecution(
-        new ConstructionExecution(this.player, UnitType.Warship, targetTile),
+      return this.tryBuildNavalUnit(
+        UnitType.Warship,
+        this.random.randElement(ports).tile(),
       );
-      return true;
+    }
+
+    const difficulty = this.game.config().gameConfig().difficulty;
+    if (
+      ports.length > 0 &&
+      ships.length > 0 &&
+      difficulty !== Difficulty.Easy &&
+      !this.game.config().isUnitDisabled(UnitType.Submarine) &&
+      this.player.units(UnitType.Submarine).length === 0 &&
+      this.player.gold() > this.cost(UnitType.Submarine)
+    ) {
+      return this.tryBuildNavalUnit(
+        UnitType.Submarine,
+        this.random.randElement(ports).tile(),
+      );
+    }
+    if (
+      ports.length > 0 &&
+      ships.length >= 1 &&
+      this.player.units(UnitType.Submarine).length > 0 &&
+      (difficulty === Difficulty.Hard || difficulty === Difficulty.Impossible) &&
+      !this.game.config().isUnitDisabled(UnitType.Carrier) &&
+      this.player.units(UnitType.Carrier).length === 0 &&
+      this.player.gold() > this.cost(UnitType.Carrier)
+    ) {
+      return this.tryBuildNavalUnit(
+        UnitType.Carrier,
+        this.random.randElement(ports).tile(),
+      );
     }
     return false;
+  }
+
+  private tryBuildNavalUnit(
+    type: UnitType.Warship | UnitType.Submarine | UnitType.Carrier,
+    portTile: TileRef,
+  ): boolean {
+    const targetTile = this.warshipSpawnTile(portTile, 250);
+    if (targetTile === null || this.player.canBuild(type, targetTile) === false) {
+      return false;
+    }
+    this.game.addExecution(
+      new ConstructionExecution(this.player, type, targetTile),
+    );
+    return true;
   }
 
   private warshipSpawnTile(portTile: TileRef, radius: number): TileRef | null {

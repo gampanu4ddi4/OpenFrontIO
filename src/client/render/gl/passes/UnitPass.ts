@@ -39,11 +39,15 @@ import {
   SMOOTHED_NUKE_TYPES,
   TrainType,
   UT_ATOM_BOMB,
+  UT_BOMBER,
+  UT_CARRIER,
+  UT_FIGHTER,
   UT_HYDROGEN_BOMB,
   UT_MIRV,
   UT_MIRV_WARHEAD,
   UT_SAM_MISSILE,
   UT_SHELL,
+  UT_SUBMARINE,
   UT_TRADE_SHIP,
   UT_TRAIN,
   UT_TRANSPORT,
@@ -99,6 +103,14 @@ const WARSHIP_COL = UNIT_ORDER.indexOf(UT_WARSHIP);
  *  carriage are contiguous) — gates the train cosmetic effect. */
 const TRAIN_FIRST_COL = UNIT_ORDER.indexOf("TrainEngine");
 
+/** Stable legacy cells used until dedicated append-only atlas cells ship. */
+const FALLBACK_ATLAS_COLS: Readonly<Record<string, number>> = {
+  [UT_SUBMARINE]: UNIT_ORDER.indexOf(UT_WARSHIP),
+  [UT_CARRIER]: UNIT_ORDER.indexOf(UT_WARSHIP),
+  [UT_FIGHTER]: UNIT_ORDER.indexOf(UT_SAM_MISSILE),
+  [UT_BOMBER]: UNIT_ORDER.indexOf(UT_ATOM_BOMB),
+};
+
 // ---------------------------------------------------------------------------
 // Instance data layout
 // ---------------------------------------------------------------------------
@@ -148,6 +160,8 @@ const MISSILE_TYPES: ReadonlySet<string> = new Set([
   UT_SHELL,
   UT_MIRV_WARHEAD,
 ]);
+
+const AIRCRAFT_TYPES: ReadonlySet<string> = new Set([UT_FIGHTER, UT_BOMBER]);
 
 /** Values per smoothing segment in the flat `smoothSegs` array:
  *  (instanceIdx, lastX, lastY, x, y). The push site and the read loop must
@@ -284,6 +298,11 @@ export class UnitPass {
       );
       if (col >= 0) {
         this.typeToAtlasCol.set(header.unitTypes[i], col);
+      } else {
+        const fallbackCol = FALLBACK_ATLAS_COLS[header.unitTypes[i]];
+        if (fallbackCol !== undefined) {
+          this.typeToAtlasCol.set(header.unitTypes[i], fallbackCol);
+        }
       }
     }
 
@@ -518,7 +537,10 @@ export class UnitPass {
         // Untargetable nukes render dimmed so players can tell SAMs can't hit them
         flags = unit.targetable ? FLAG_FLICKER : FLAG_FLICKER_UNTARGETABLE;
       }
-      const isMissile = MISSILE_TYPES.has(unit.unitType);
+      // Reuse the upper unit draw as the air layer: above structures without
+      // adding a pass or changing the legacy atlas dimensions.
+      const isMissile =
+        MISSILE_TYPES.has(unit.unitType) || AIRCRAFT_TYPES.has(unit.unitType);
 
       const x = unit.pos % this.mapW;
       const y = (unit.pos - x) / this.mapW;

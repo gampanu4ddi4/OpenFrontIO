@@ -47,6 +47,7 @@ export type Intent =
   | EmbargoIntent
   | QuickChatIntent
   | MoveWarshipIntent
+  | LaunchAirSortieIntent
   | MarkDisconnectedIntent
   | EmbargoAllIntent
   | UpgradeStructureIntent
@@ -75,6 +76,7 @@ export type UpgradeStructureIntent = z.infer<
   typeof UpgradeStructureIntentSchema
 >;
 export type MoveWarshipIntent = z.infer<typeof MoveWarshipIntentSchema>;
+export type LaunchAirSortieIntent = z.infer<typeof LaunchAirSortieIntentSchema>;
 export type QuickChatIntent = z.infer<typeof QuickChatIntentSchema>;
 export type MarkDisconnectedIntent = z.infer<
   typeof MarkDisconnectedIntentSchema
@@ -717,6 +719,14 @@ export const MoveWarshipIntentSchema = z.object({
   tile: zb.uint(),
 });
 
+export const LaunchAirSortieIntentSchema = z.object({
+  type: z.literal("launch_air_sortie"),
+  platformUnitId: zb.uint(),
+  aircraftType: z.enum([UnitType.Fighter, UnitType.Bomber]),
+  targetTile: zb.uint(),
+  targetUnitId: zb.uint().optional(),
+});
+
 export const DeleteUnitIntentSchema = z.object({
   type: z.literal("delete_unit"),
   unitId: zb.uint(),
@@ -782,6 +792,7 @@ export const IntentSchema = z.discriminatedUnion("type", [
   EmbargoIntentSchema,
   EmbargoAllIntentSchema,
   MoveWarshipIntentSchema,
+  LaunchAirSortieIntentSchema,
   QuickChatIntentSchema,
   AllianceExtensionIntentSchema,
   DeleteUnitIntentSchema,

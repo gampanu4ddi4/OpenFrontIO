@@ -203,6 +203,8 @@ export class GameRunner {
     const packedMotionPlans = this.game.drainPackedMotionPlans();
     const packedPlayerUpdates = this.game.drainPackedPlayerUpdates();
     const packedAttackUpdates = this.game.drainPackedAttackUpdates();
+    const packedStrategicControlUpdates =
+      this.game.drainPackedStrategicControlUpdates();
     const nukeImpactTiles = this.game.drainNukeImpacts();
     const packedNukeImpacts =
       nukeImpactTiles.length > 0 ? new Uint32Array(nukeImpactTiles) : undefined;
@@ -213,6 +215,9 @@ export class GameRunner {
       ...(packedMotionPlans ? { packedMotionPlans } : {}),
       ...(packedPlayerUpdates ? { packedPlayerUpdates } : {}),
       ...(packedAttackUpdates ? { packedAttackUpdates } : {}),
+      ...(packedStrategicControlUpdates
+        ? { packedStrategicControlUpdates }
+        : {}),
       ...(packedNukeImpacts ? { packedNukeImpacts } : {}),
       updates: updates,
       ...(viewDataChanged ? { playerNameViewData: this.playerViewData } : {}),

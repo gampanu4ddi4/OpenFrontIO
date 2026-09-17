@@ -1,4 +1,5 @@
 import {
+  AirUnitState,
   NukeState,
   Tick,
   TrainType,
@@ -120,6 +121,7 @@ export class UnitView {
   private _warshipState?: WarshipState;
   private _transportShipState?: TransportShipState;
   private _nukeState?: NukeState;
+  private _airUnitState?: AirUnitState;
   private _createdAt: Tick;
 
   constructor(
@@ -130,6 +132,7 @@ export class UnitView {
     this._warshipState = data.warshipState;
     this._transportShipState = data.transportShipState;
     this._nukeState = data.nukeState;
+    this._airUnitState = data.airUnitState;
     this.lastPos.push(data.pos);
     this._createdAt = this.gameView.ticks();
     if (this.state.underConstruction) {
@@ -164,6 +167,7 @@ export class UnitView {
     this._warshipState = data.warshipState;
     this._transportShipState = data.transportShipState;
     this._nukeState = data.nukeState;
+    this._airUnitState = data.airUnitState;
     // constructionStartTick: set on transition into underConstruction.
     if (this.state.underConstruction && !wasUnderConstruction) {
       this.state.constructionStartTick = this.gameView.ticks();
@@ -236,6 +240,12 @@ export class UnitView {
   }
   updateNukeState(_update: NukeState): void {
     throw new Error("updateNukeState is not supported on UnitView");
+  }
+  airUnitState(): AirUnitState {
+    if (this._airUnitState === undefined) {
+      throw new Error("airUnitState called on non-aircraft unit");
+    }
+    return this._airUnitState;
   }
   tile(): TileRef {
     return this.state.pos;

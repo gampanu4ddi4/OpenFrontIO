@@ -165,7 +165,12 @@
       "missile_silo": "Used to launch nukes",
       "port": "Sends trade ships to generate gold",
       "sam_launcher": "Defends against incoming nukes",
-      "warship": "Captures trade ships, destroys ships and boats"
+      "warship": "Captures trade ships, destroys ships and boats",
+      "submarine": "Stealth naval hunter; detection is distance-based",
+      "carrier": "Mobile air platform with four fighters and two sorties",
+      "airbase": "Holds four aircraft and launches two sorties at once",
+      "fighter": "Patrols and intercepts enemy aircraft",
+      "bomber": "Strikes troops and structures, then returns to base"
     },
     "not_enough_money": "Not enough money",
     "upgrade_amount": "x{amount}",
@@ -2081,7 +2086,22 @@
     "missile_silo": "Missile Silo",
     "port": "Port",
     "sam_launcher": "SAM Launcher",
-    "warship": "Warship"
+    "warship": "Warship",
+    "submarine": "Submarine",
+    "carrier": "Carrier",
+    "airbase": "Airbase",
+    "fighter": "Fighter",
+    "bomber": "Bomber"
+  },
+  "reputation": {
+    "title": "International Reputation",
+    "trusted": "Trusted",
+    "neutral": "Neutral",
+    "bad_state": "Bad State",
+    "alliance_break": "Alliance broken",
+    "non_hostile_nuke": "Nuclear strike against a non-hostile nation",
+    "support": "Meaningful support sent to an ally under attack",
+    "recovery": "Reputation recovery"
   },
   "update_available": {
     "desktop": "A new version of OpenFront is available. It will download in the background; reload from the update bar once it is ready.",

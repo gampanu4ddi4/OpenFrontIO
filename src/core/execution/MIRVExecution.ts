@@ -90,7 +90,7 @@ export class MirvExecution implements Execution {
       if (this.targetPlayer.isPlayer()) {
         const alliance = this.player.allianceWith(this.targetPlayer);
         if (alliance !== null) {
-          this.player.breakAlliance(alliance);
+          this.player.breakAlliance(alliance, "nuke");
         }
         if (this.targetPlayer !== this.player) {
           this.targetPlayer.updateRelation(this.player, -100);

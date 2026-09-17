@@ -174,7 +174,7 @@ export class NukeExecution implements Execution {
 
       const alliance = this.player.allianceWith(attackedPlayer);
       if (alliance !== null) {
-        this.player.breakAlliance(alliance);
+        this.player.breakAlliance(alliance, "nuke");
       }
       if (attackedPlayer !== this.player) {
         attackedPlayer.updateRelation(this.player, -100);
@@ -213,8 +213,18 @@ export class NukeExecution implements Execution {
         targetTile: this.dst,
         trajectory: this.getTrajectory(this.dst),
       });
+      const launchTarget = this.mg.hasOwner(this.dst)
+        ? this.mg.owner(this.dst)
+        : null;
+      const isNonHostileStrike =
+        launchTarget?.isPlayer() === true &&
+        launchTarget !== this.player &&
+        !this.player.canAttackPlayer(launchTarget);
       this.nuke.updateNukeState({ waitTicks: this.waitTicks });
       this.recordMotionPlan(ticks);
+      if (isNonHostileStrike && launchTarget?.isPlayer()) {
+        this.player.recordNonHostileNukeReputation(launchTarget);
+      }
       if (this.nuke.type() !== UnitType.MIRVWarhead) {
         this.maybeBreakAlliances();
       }

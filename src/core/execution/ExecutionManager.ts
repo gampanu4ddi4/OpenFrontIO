@@ -16,6 +16,7 @@ import { EmbargoAllExecution } from "./EmbargoAllExecution";
 import { EmbargoExecution } from "./EmbargoExecution";
 import { EmojiExecution } from "./EmojiExecution";
 import { MarkDisconnectedExecution } from "./MarkDisconnectedExecution";
+import { LaunchAirSortieExecution } from "./LaunchAirSortieExecution";
 import { MoveWarshipExecution } from "./MoveWarshipExecution";
 import { NationExecution } from "./NationExecution";
 import { NoOpExecution } from "./NoOpExecution";
@@ -71,6 +72,14 @@ export class Executor {
         return new BoatRetreatExecution(player, intent.unitID);
       case "move_warship":
         return new MoveWarshipExecution(player, intent.unitIds, intent.tile);
+      case "launch_air_sortie":
+        return new LaunchAirSortieExecution(
+          player,
+          intent.platformUnitId,
+          intent.aircraftType,
+          intent.targetTile,
+          intent.targetUnitId,
+        );
       case "spawn":
         // fromIntent: this one came off the wire, so it is subject to the
         // spawn-phase gate that internal spawns are not.

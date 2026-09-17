@@ -367,6 +367,114 @@ export class Config {
   SAMCooldown(): number {
     return 90;
   }
+
+  strategicControlSectorSize(): number {
+    return 32;
+  }
+  strategicControlRefreshTicks(): Tick {
+    return 10;
+  }
+  minimumControlScore(): number {
+    return 20;
+  }
+  controlLeadBasisPoints(): number {
+    return 12_000;
+  }
+  minimumSeaControlWaterRatioBasisPoints(): number {
+    return 2_500;
+  }
+  controlEffectsEnabled(): boolean {
+    return true;
+  }
+  transportControlSpeedBasisPoints(): number {
+    return 9_200;
+  }
+  friendlyBombingBasisPoints(): number {
+    return 10_500;
+  }
+  hostileBombingBasisPoints(): number {
+    return 9_000;
+  }
+  fighterRearmBasisPoints(): number {
+    return 9_500;
+  }
+  maximumDetectionBasisPoints(): number {
+    return 12_500;
+  }
+  airPlatformCapacity(_level = 1): number {
+    return 4;
+  }
+  airPlatformConcurrentSorties(_level = 1): number {
+    return 2;
+  }
+  submarineDetectionRadius(): number {
+    return 18;
+  }
+  fighterDetectionRadius(): number {
+    return 12;
+  }
+  fighterInterceptionRadius(): number {
+    return 24;
+  }
+  bomberTroopDamagePercent(): number {
+    return 2;
+  }
+  bomberTroopDamageCap(): number {
+    return 50_000;
+  }
+  bomberStructureDamage(): number {
+    return 250;
+  }
+  aircraftSortieTicks(): Tick { return 120; }
+  fighterPatrolTicks(): Tick { return 50; }
+  fighterRearmTicks(): Tick { return 40; }
+  bomberRearmTicks(): Tick { return 70; }
+  aircraftMaximumRange(): number { return 160; }
+  submarineAttackRange(): number { return 24; }
+  submarineAttackDamage(): number { return 350; }
+  submarineAttackCooldown(): Tick { return 20; }
+  samAirDefenseRange(_level = 1): number { return 35; }
+  samAirDefenseCooldown(): Tick { return 25; }
+  samAirDefenseDamage(): number { return 175; }
+  strategicControlScore(type: UnitType): number {
+    switch (type) {
+      case UnitType.Warship: return 20;
+      case UnitType.Submarine: return 15;
+      case UnitType.Carrier: return 30;
+      case UnitType.Airbase: return 20;
+      case UnitType.Fighter: return 25;
+      case UnitType.Bomber: return 10;
+      default: return 0;
+    }
+  }
+  badStateReputationThreshold(): number {
+    return -45;
+  }
+  allianceBreakReputation(): number {
+    return -15;
+  }
+  nonHostileNukeReputation(): number {
+    return -10;
+  }
+  reputationNukeCooldownTicks(): Tick {
+    return 120 * 10;
+  }
+  reputationRecoveryTicks(): Tick {
+    return 60 * 10;
+  }
+  reputationSupportCooldownTicks(): Tick {
+    return 60 * 10;
+  }
+  reputationSupportCap(): number {
+    return 20;
+  }
+  reputationMinimumTroops(): number {
+    return 10_000;
+  }
+  reputationMinimumGold(): Gold {
+    return 25_000n;
+  }
+
   SiloCooldown(): number {
     return 90;
   }
@@ -570,6 +678,40 @@ export class Config {
             UnitType.Warship,
           ),
           maxHealth: 1000,
+        };
+        break;
+      case UnitType.Submarine:
+        info = {
+          cost: this.costWrapper(() => 500_000, UnitType.Submarine),
+          maxHealth: 700,
+        };
+        break;
+      case UnitType.Carrier:
+        info = {
+          cost: this.costWrapper(() => 1_500_000, UnitType.Carrier),
+          maxHealth: 1_500,
+        };
+        break;
+      case UnitType.Airbase:
+        info = {
+          cost: this.costWrapper(() => 750_000, UnitType.Airbase),
+          maxHealth: 1_000,
+          constructionDuration: this.instantBuild() ? 0 : 8 * 10,
+          upgradable: true,
+        };
+        break;
+      case UnitType.Fighter:
+        info = {
+          cost: this.costWrapper(() => 200_000, UnitType.Fighter),
+          maxHealth: 250,
+          damage: 125,
+        };
+        break;
+      case UnitType.Bomber:
+        info = {
+          cost: this.costWrapper(() => 350_000, UnitType.Bomber),
+          maxHealth: 300,
+          damage: this.bomberStructureDamage(),
         };
         break;
       case UnitType.Shell:

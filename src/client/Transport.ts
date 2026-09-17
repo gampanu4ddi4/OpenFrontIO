@@ -206,6 +206,15 @@ export class MoveWarshipIntentEvent implements GameEvent {
   ) {}
 }
 
+export class LaunchAirSortieIntentEvent implements GameEvent {
+  constructor(
+    public readonly platformUnitId: number,
+    public readonly aircraftType: UnitType.Fighter | UnitType.Bomber,
+    public readonly targetTile: TileRef,
+    public readonly targetUnitId?: number,
+  ) {}
+}
+
 export class SendKickPlayerIntentEvent implements GameEvent {
   constructor(public readonly target: string) {}
 }
@@ -330,6 +339,10 @@ export class Transport {
 
     this.eventBus.on(MoveWarshipIntentEvent, (e) => {
       this.onMoveWarshipEvent(e);
+    });
+
+    this.eventBus.on(LaunchAirSortieIntentEvent, (e) => {
+      this.onLaunchAirSortieEvent(e);
     });
 
     this.eventBus.on(SendDeleteUnitIntentEvent, (e) =>
@@ -900,6 +913,16 @@ export class Transport {
       type: "move_warship",
       unitIds: event.unitIds,
       tile: event.tile,
+    });
+  }
+
+  private onLaunchAirSortieEvent(event: LaunchAirSortieIntentEvent) {
+    this.sendIntent({
+      type: "launch_air_sortie",
+      platformUnitId: event.platformUnitId,
+      aircraftType: event.aircraftType,
+      targetTile: event.targetTile,
+      targetUnitId: event.targetUnitId,
     });
   }
 

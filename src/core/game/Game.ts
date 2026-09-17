@@ -4,6 +4,7 @@ import { PathFinder } from "../pathfinding/types";
 import { AllPlayersStats, ClientID } from "../Schemas";
 import { formatPlayerDisplayName } from "../Util";
 import { GameMap, TileRef } from "./GameMap";
+import type { ReputationEvent, SupportSnapshot } from "./Reputation";
 import {
   GameUpdate,
   GameUpdateType,
@@ -38,6 +39,25 @@ export type WarshipState = {
   veterancy: number;
   veterancyProgress: number;
 };
+
+export type NavalUnitState = WarshipState;
+
+export type AirUnitState = {
+  state:
+    | "ready"
+    | "outbound"
+    | "patrolling"
+    | "attacking"
+    | "returning"
+    | "rearming";
+  platformUnitId: number;
+  sortieEndTick: Tick;
+  targetTile?: TileRef;
+  targetUnitId?: number;
+  rearmUntilTick?: Tick;
+};
+
+export type AllianceBreakCause = "unilateral" | "nuke";
 
 export type TransportShipState = {
   isRetreating: boolean;
@@ -194,6 +214,11 @@ function unitTypeGroup<T extends readonly UnitType[]>(types: T) {
 export enum UnitType {
   TransportShip = "Transport",
   Warship = "Warship",
+  Submarine = "Submarine",
+  Carrier = "Carrier",
+  Airbase = "Airbase",
+  Fighter = "Fighter",
+  Bomber = "Bomber",
   Shell = "Shell",
   SAMMissile = "SAMMissile",
   Port = "Port",
@@ -228,6 +253,26 @@ export const BuildableAttacks = unitTypeGroup([
   UnitType.HydrogenBomb,
   UnitType.MIRV,
   UnitType.Warship,
+  UnitType.Submarine,
+  UnitType.Carrier,
+  UnitType.Fighter,
+  UnitType.Bomber,
+] as const);
+
+export const NavalUnitTypes = unitTypeGroup([
+  UnitType.Warship,
+  UnitType.Submarine,
+  UnitType.Carrier,
+] as const);
+
+export const AircraftUnitTypes = unitTypeGroup([
+  UnitType.Fighter,
+  UnitType.Bomber,
+] as const);
+
+export const AirbaseCarrierTypes = unitTypeGroup([
+  UnitType.Airbase,
+  UnitType.Carrier,
 ] as const);
 
 export const Structures = unitTypeGroup([
@@ -237,6 +282,7 @@ export const Structures = unitTypeGroup([
   UnitType.MissileSilo,
   UnitType.Port,
   UnitType.Factory,
+  UnitType.Airbase,
 ] as const);
 
 export const BuildMenus = unitTypeGroup([
@@ -267,6 +313,20 @@ export interface UnitParamsMap {
 
   [UnitType.Warship]: {
     patrolTile: TileRef;
+  };
+
+  [UnitType.Submarine]: { patrolTile: TileRef };
+  [UnitType.Carrier]: { patrolTile: TileRef };
+  [UnitType.Airbase]: Record<string, never>;
+  [UnitType.Fighter]: {
+    platformUnitId: number;
+    targetTile: TileRef;
+    targetUnitId?: number;
+  };
+  [UnitType.Bomber]: {
+    platformUnitId: number;
+    targetTile: TileRef;
+    targetUnitId?: number;
   };
 
   [UnitType.Shell]: Record<string, never>;
@@ -519,6 +579,8 @@ export interface Unit {
   hasHealth(): boolean;
   warshipState(): WarshipState;
   updateWarshipState(update: Partial<WarshipState>): void;
+  airUnitState(): AirUnitState;
+  updateAirUnitState(update: Partial<AirUnitState>): void;
   transportShipState(): TransportShipState;
   updateTransportShipState(update: Partial<TransportShipState>): void;
   nukeState(): NukeState;
@@ -549,6 +611,8 @@ export interface Unit {
   isInCooldown(): boolean;
   missileTimerQueue(): number[];
   samLauncherState(): SamLauncherState | undefined;
+  airDefenseCooldownUntil(): Tick;
+  setAirDefenseCooldownUntil(tick: Tick): void;
 
   // Trade Ships
   setSafeFromPirates(): void; // Only for trade ships
@@ -715,10 +779,22 @@ export interface Player {
   allianceWith(other: Player): MutableAlliance | null;
   allianceInfo(other: Player): AllianceInfo | null;
   canSendAllianceRequest(other: Player): boolean;
-  breakAlliance(alliance: Alliance): void;
+  breakAlliance(alliance: Alliance, cause?: AllianceBreakCause): void;
   removeAllAlliances(): void;
   createAllianceRequest(recipient: Player): AllianceRequest | null;
   betrayals(): number;
+  internationalReputation(): number;
+  reputationTradeBasisPoints(): number;
+  recentReputationEvents(): readonly ReputationEvent[];
+  recordAllianceBreakReputation(target: Player): boolean;
+  recordNonHostileNukeReputation(target: Player): boolean;
+  recordSupportReputation(
+    target: Player,
+    kind: "troops" | "gold",
+    amount: number | bigint,
+    before: SupportSnapshot,
+  ): boolean;
+  recoverInternationalReputation(): void;
 
   // Targeting
   canTarget(other: Player): boolean;
@@ -835,6 +911,12 @@ export interface Game extends GameMap {
   drainPackedMotionPlans(): Uint32Array | null;
   drainPackedPlayerUpdates(): Float64Array | null;
   drainPackedAttackUpdates(): Float64Array | null;
+  drainPackedStrategicControlUpdates(): Uint32Array | undefined;
+  strategicControlRelationAt(
+    tile: TileRef,
+    domain: "sea" | "air",
+    viewer: Player,
+  ): "friendly" | "hostile" | "contested" | "neutral";
   // null ends the game with no winner (a cancelled match, e.g. a ranked game
   // that didn't fill): the record is archived winnerless and never ranked.
   setWinner(

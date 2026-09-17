@@ -55,6 +55,16 @@ export class DonateTroopsExecution implements Execution {
     if (this.troops === null) throw new Error("not initialized");
 
     const minTroops = this.getMinTroopsForRelationUpdate();
+    const supportSnapshot = {
+      recipientTroops: this.recipient.troops(),
+      recipientGold: this.recipient.gold(),
+      incomingAttack: this.recipient
+        .incomingAttacks()
+        .some(
+          (attack) =>
+            attack.isActive() && attack.attacker() !== this.sender,
+        ),
+    };
 
     if (
       this.sender.canDonateTroops(this.recipient) &&
@@ -64,6 +74,12 @@ export class DonateTroopsExecution implements Execution {
       if (this.troops >= minTroops) {
         this.recipient.updateRelation(this.sender, 50);
       }
+      this.sender.recordSupportReputation(
+        this.recipient,
+        "troops",
+        this.troops,
+        supportSnapshot,
+      );
 
       // Only AI nations auto-respond with emojis, human players should not
       if (

@@ -1,6 +1,7 @@
 import { AllPlayersStats, ClientID, Winner } from "../Schemas";
 import {
   EmojiMessage,
+  AirUnitState,
   GameUpdates,
   Gold,
   MessageType,
@@ -17,6 +18,7 @@ import {
   WarshipState,
 } from "./Game";
 import { TileRef } from "./GameMap";
+import type { ReputationEvent } from "./Reputation";
 
 export interface GameUpdateViewData {
   tick: number;
@@ -35,6 +37,8 @@ export interface GameUpdateViewData {
    * (similar to `packedTileUpdates`) to avoid structured-clone copies.
    */
   packedMotionPlans?: Uint32Array;
+  /** Seven uint32 lanes per changed strategic-control sector. */
+  packedStrategicControlUpdates?: Uint32Array;
   /**
    * Packed per-player numeric stats as
    * `[smallID, tilesOwned, gold, troops, goldEarned]`
@@ -189,6 +193,7 @@ export interface UnitUpdate {
   isActive: boolean;
   reachedTarget: boolean;
   warshipState?: WarshipState;
+  airUnitState?: AirUnitState;
   transportShipState?: TransportShipState;
   nukeState?: NukeState;
   targetable: boolean;
@@ -198,6 +203,7 @@ export interface UnitUpdate {
   health?: number;
   underConstruction?: boolean;
   missileTimerQueue: number[];
+  airDefenseCooldownUntil?: number;
   level: number;
   hasTrainStation: boolean;
   trainType?: TrainType; // Only for trains
@@ -268,6 +274,8 @@ export interface PlayerUpdate {
   hasSpawned?: boolean;
   spawnTile?: TileRef;
   betrayals?: number;
+  internationalReputation?: number;
+  recentReputationEvents?: readonly ReputationEvent[];
   lastDeleteUnitTick?: Tick;
   isLobbyCreator?: boolean;
 }

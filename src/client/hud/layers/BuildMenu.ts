@@ -12,6 +12,7 @@ import {
 } from "../../../core/game/Game";
 import { TileRef } from "../../../core/game/GameMap";
 import { Controller } from "../../Controller";
+import { SelectAirSortieMissionEvent } from "../../controllers/AirSortieController";
 import {
   CloseViewEvent,
   MouseDownEvent,
@@ -74,6 +75,41 @@ export const buildTable: BuildItemDisplay[][] = [
       icon: warshipIcon,
       description: "build_menu.desc.warship",
       key: "unit_type.warship",
+      countable: true,
+    },
+    {
+      unitType: UnitType.Submarine,
+      icon: warshipIcon,
+      description: "build_menu.desc.submarine",
+      key: "unit_type.submarine",
+      countable: true,
+    },
+    {
+      unitType: UnitType.Carrier,
+      icon: warshipIcon,
+      description: "build_menu.desc.carrier",
+      key: "unit_type.carrier",
+      countable: true,
+    },
+    {
+      unitType: UnitType.Airbase,
+      icon: factoryIcon,
+      description: "build_menu.desc.airbase",
+      key: "unit_type.airbase",
+      countable: true,
+    },
+    {
+      unitType: UnitType.Fighter,
+      icon: warshipIcon,
+      description: "build_menu.desc.fighter",
+      key: "unit_type.fighter",
+      countable: true,
+    },
+    {
+      unitType: UnitType.Bomber,
+      icon: atomBombIcon,
+      description: "build_menu.desc.bomber",
+      key: "unit_type.bomber",
       countable: true,
     },
     {
@@ -361,6 +397,17 @@ export class BuildMenu extends LitElement implements Controller {
       return false;
     }
     const unit = this.playerBuildables.find((u) => u.type === item.unitType);
+    if (
+      item.unitType === UnitType.Fighter ||
+      item.unitType === UnitType.Bomber
+    ) {
+      const platform = this.missionPlatform(item.unitType);
+      return (
+        (platform !== undefined &&
+          this.readyAircraft(platform.id(), item.unitType) !== undefined) ||
+        unit?.canBuild !== false
+      );
+    }
     return unit ? unit.canBuild !== false || unit.canUpgrade !== false : false;
   }
 
@@ -383,7 +430,27 @@ export class BuildMenu extends LitElement implements Controller {
   }
 
   public sendBuildOrUpgrade(buildableUnit: BuildableUnit, tile: TileRef): void {
-    if (buildableUnit.canUpgrade !== false) {
+    if (
+      buildableUnit.type === UnitType.Fighter ||
+      buildableUnit.type === UnitType.Bomber
+    ) {
+      const platform = this.missionPlatform(buildableUnit.type);
+      const ready =
+        platform === undefined
+          ? undefined
+          : this.readyAircraft(platform.id(), buildableUnit.type);
+      if (platform !== undefined && ready !== undefined) {
+        this.eventBus.emit(
+          new SelectAirSortieMissionEvent(platform, buildableUnit.type),
+        );
+      } else if (buildableUnit.canBuild !== false) {
+        // No ready aircraft: purchase one at the clicked platform. Subsequent
+        // clicks launch it once the core reports it ready.
+        this.eventBus.emit(
+          new BuildUnitIntentEvent(buildableUnit.type, tile, undefined),
+        );
+      }
+    } else if (buildableUnit.canUpgrade !== false) {
       this.eventBus.emit(
         new SendUpgradeStructureIntentEvent(
           buildableUnit.canUpgrade,
@@ -419,9 +486,7 @@ export class BuildMenu extends LitElement implements Controller {
                 if (buildableUnit === undefined) {
                   return html``;
                 }
-                const enabled =
-                  buildableUnit.canBuild !== false ||
-                  buildableUnit.canUpgrade !== false;
+                const enabled = this.canBuildOrUpgrade(item);
                 return html`
                   <button
                     class="build-button"
@@ -500,6 +565,38 @@ export class BuildMenu extends LitElement implements Controller {
     return buildTable.map((row) =>
       row.filter((item) => !this.game?.config()?.isUnitDisabled(item.unitType)),
     );
+  }
+
+  private missionPlatform(
+    aircraftType: UnitType.Fighter | UnitType.Bomber,
+  ) {
+    const myPlayer = this.game?.myPlayer();
+    if (!myPlayer) return undefined;
+    return this.game
+      .units(UnitType.Airbase, UnitType.Carrier)
+      .find(
+        (unit) =>
+          unit.owner() === myPlayer &&
+          unit.tile() === this.clickedTile &&
+          (aircraftType === UnitType.Fighter ||
+            unit.type() === UnitType.Airbase),
+      );
+  }
+
+  private readyAircraft(
+    platformUnitId: number,
+    aircraftType: UnitType.Fighter | UnitType.Bomber,
+  ) {
+    const myPlayer = this.game?.myPlayer();
+    if (!myPlayer) return undefined;
+    return this.game
+      .units(aircraftType)
+      .find(
+        (unit) =>
+          unit.owner() === myPlayer &&
+          unit.airUnitState().platformUnitId === platformUnitId &&
+          unit.airUnitState().state === "ready",
+      );
   }
 
   get isVisible() {

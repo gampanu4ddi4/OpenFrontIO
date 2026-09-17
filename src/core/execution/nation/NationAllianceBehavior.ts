@@ -129,6 +129,23 @@ export class NationAllianceBehavior {
       }
       return false;
     }
+    // Public reputation is a small signal, not a replacement for bilateral
+    // relation: at most a ten percentage-point nudge either way.
+    const reputationBias = Math.trunc(
+      otherPlayer.internationalReputation() / 10,
+    );
+    if (
+      reputationBias < 0 &&
+      this.random.nextInt(0, 100) < -reputationBias
+    ) {
+      return false;
+    }
+    if (
+      reputationBias > 0 &&
+      this.random.nextInt(0, 100) < reputationBias
+    ) {
+      return true;
+    }
     // Maybe accept if relation is friendly
     if (this.isAlliancePartnerFriendly(otherPlayer)) {
       if (this.random.chance(3)) {

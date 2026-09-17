@@ -52,6 +52,15 @@ function getStructureRatios(
       ratioPerCity: 0.75,
       perceivedCostIncreasePerOwned: 1,
     },
+    [UnitType.Airbase]: {
+      ratioPerCity:
+        difficulty === Difficulty.Easy
+          ? 0
+          : difficulty === Difficulty.Medium
+            ? 0.15
+            : 0.25,
+      perceivedCostIncreasePerOwned: 1,
+    },
     [UnitType.SAMLauncher]: {
       ratioPerCity: SAM_RATIO_BY_DIFFICULTY[difficulty],
       perceivedCostIncreasePerOwned: 0.3,
@@ -493,6 +502,7 @@ export class NationStructureBehavior {
     const buildOrder: UnitType[] = [
       UnitType.Port,
       UnitType.Factory,
+      UnitType.Airbase,
       UnitType.SAMLauncher,
       UnitType.MissileSilo,
     ];
@@ -908,6 +918,8 @@ export class NationStructureBehavior {
         return this.missileSiloValue();
       case UnitType.Factory:
         return this.factoryValue();
+      case UnitType.Airbase:
+        return this.missileSiloValue();
       case UnitType.Port:
         return this.portValue();
       case UnitType.SAMLauncher:

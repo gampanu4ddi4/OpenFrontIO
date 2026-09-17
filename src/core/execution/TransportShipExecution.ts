@@ -11,6 +11,7 @@ import {
 } from "../game/Game";
 import { TileRef } from "../game/GameMap";
 import { MotionPlanRecord } from "../game/MotionPlans";
+import { transportMoveProgress } from "../game/AirNavalRules";
 import { targetTransportTile } from "../game/TransportShipUtils";
 import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PathStatus } from "../pathfinding/types";
@@ -24,6 +25,7 @@ export class TransportShipExecution implements Execution {
   // TODO: make this configurable
   private ticksPerMove = 1;
   private lastMove: number;
+  private bonusMoveProgress = 0;
 
   private mg: Game;
   private target: Player | TerraNullius;
@@ -282,6 +284,7 @@ export class TransportShipExecution implements Execution {
         return;
       case PathStatus.NEXT:
         this.boat.move(result.node);
+        this.applySeaControlBonusMove();
         break;
       case PathStatus.NOT_FOUND: {
         // TODO: add to poisoned port list
@@ -324,6 +327,21 @@ export class TransportShipExecution implements Execution {
 
   isActive(): boolean {
     return this.active;
+  }
+
+  private applySeaControlBonusMove(): void {
+    const relation = this.mg.strategicControlRelationAt(
+      this.boat.tile(),
+      "sea",
+      this.attacker,
+    );
+    this.bonusMoveProgress += transportMoveProgress(relation) - 10_000;
+    if (this.bonusMoveProgress < 10_000 || this.dst === null) return;
+
+    const bonus = this.pathFinder.next(this.boat.tile(), this.dst);
+    if (bonus.status !== PathStatus.NEXT) return;
+    this.bonusMoveProgress -= 10_000;
+    this.boat.move(bonus.node);
   }
 
   private rejectIncomingAllianceRequests(target: Player) {

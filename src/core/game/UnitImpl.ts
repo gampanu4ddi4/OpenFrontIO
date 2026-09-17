@@ -1,5 +1,6 @@
 import { simpleHash, toInt, withinInt } from "../Util";
 import {
+  AirUnitState,
   AllUnitParams,
   MessageType,
   NukeState,
@@ -30,6 +31,7 @@ export class UnitImpl implements Unit {
   private _lastTile: TileRef;
   private _transportShipState: TransportShipState | undefined = undefined;
   private _warshipState: WarshipState | undefined = undefined;
+  private _airUnitState: AirUnitState | undefined = undefined;
   private _nukeState: NukeState | undefined = undefined;
   private _reachedTarget = false;
   private _wasDestroyedByEnemy: boolean = false;
@@ -48,6 +50,7 @@ export class UnitImpl implements Unit {
   // Nuke only
   private _deletionAt: number | null = null;
   private _samLauncherState: SamLauncherState | undefined;
+  private _airDefenseCooldownUntil = 0;
 
   constructor(
     private _type: UnitType,
@@ -93,6 +96,19 @@ export class UnitImpl implements Unit {
         lastCombatTick: -100,
         veterancy: 0,
         veterancyProgress: 0,
+      };
+    }
+    if (this._type === UnitType.Fighter || this._type === UnitType.Bomber) {
+      if (!("platformUnitId" in params)) {
+        throw new Error("aircraft requires a launch platform");
+      }
+      this._airUnitState = {
+        state: "ready",
+        platformUnitId: params.platformUnitId,
+        sortieEndTick: 0,
+        targetTile: "targetTile" in params ? params.targetTile : undefined,
+        targetUnitId:
+          "targetUnitId" in params ? params.targetUnitId : undefined,
       };
     }
     this._targetUnit =
@@ -156,6 +172,8 @@ export class UnitImpl implements Unit {
         this._warshipState !== undefined
           ? { ...this.warshipState() }
           : undefined,
+      airUnitState:
+        this._airUnitState !== undefined ? { ...this._airUnitState } : undefined,
       transportShipState:
         this._transportShipState !== undefined
           ? this.transportShipState()
@@ -175,6 +193,7 @@ export class UnitImpl implements Unit {
       targetUnitId: this._targetUnit?.id() ?? undefined,
       targetTile: this.targetTile() ?? undefined,
       missileTimerQueue: this._missileTimerQueue,
+      airDefenseCooldownUntil: this._airDefenseCooldownUntil || undefined,
       level: this.level(),
       hasTrainStation: this._hasTrainStation,
       trainType: this._trainType,
@@ -430,6 +449,21 @@ export class UnitImpl implements Unit {
     this.mg.addUpdate(this.toUpdate());
   }
 
+  airUnitState(): AirUnitState {
+    if (this._airUnitState === undefined) {
+      throw new Error("airUnitState called on non-aircraft unit");
+    }
+    return this._airUnitState;
+  }
+
+  updateAirUnitState(update: Partial<AirUnitState>): void {
+    if (this._airUnitState === undefined) {
+      throw new Error("updateAirUnitState called on non-aircraft unit");
+    }
+    this._airUnitState = { ...this._airUnitState, ...update };
+    this.mg.addUpdate(this.toUpdate());
+  }
+
   isInCombat(): boolean {
     return this.mg.ticks() - this._warshipState!.lastCombatTick <= 3;
   }
@@ -540,6 +574,15 @@ export class UnitImpl implements Unit {
 
   samLauncherState(): SamLauncherState | undefined {
     return this._samLauncherState;
+  }
+
+  airDefenseCooldownUntil(): Tick {
+    return this._airDefenseCooldownUntil;
+  }
+
+  setAirDefenseCooldownUntil(tick: Tick): void {
+    this._airDefenseCooldownUntil = tick;
+    this.mg.addUpdate(this.toUpdate());
   }
 
   reloadMissile(): void {

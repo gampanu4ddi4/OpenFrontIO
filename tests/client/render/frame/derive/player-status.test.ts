@@ -42,6 +42,8 @@ function ps(overrides: Partial<PlayerState> = {}): PlayerState {
     isDecaying: false,
     markedDoomsdayClockTick: -1,
     betrayals: 0,
+    internationalReputation: 0,
+    recentReputationEvents: [],
     hasSpawned: true,
     lastDeleteUnitTick: 0,
     allies: [],

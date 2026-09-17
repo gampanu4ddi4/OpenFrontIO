@@ -1,5 +1,6 @@
 import type { PlayerState } from "../../client/render/types";
 import type { EmojiMessage } from "./Game";
+import type { ReputationEvent } from "./Reputation";
 import {
   AllianceView,
   AttackUpdate,
@@ -59,6 +60,11 @@ export function diffPlayerUpdate(
     prev.hasSpawned === next.hasSpawned &&
     prev.spawnTile === next.spawnTile &&
     prev.betrayals === next.betrayals &&
+    prev.internationalReputation === next.internationalReputation &&
+    reputationEventArrayEqual(
+      prev.recentReputationEvents,
+      next.recentReputationEvents,
+    ) &&
     prev.lastDeleteUnitTick === next.lastDeleteUnitTick &&
     prev.isLobbyCreator === next.isLobbyCreator &&
     numberArrayEqual(prev.allies, next.allies) &&
@@ -123,6 +129,17 @@ export function diffPlayerUpdate(
   setIfDifferent("hasSpawned", prev.hasSpawned === next.hasSpawned);
   setIfDifferent("spawnTile", prev.spawnTile === next.spawnTile);
   setIfDifferent("betrayals", prev.betrayals === next.betrayals);
+  setIfDifferent(
+    "internationalReputation",
+    prev.internationalReputation === next.internationalReputation,
+  );
+  setIfDifferent(
+    "recentReputationEvents",
+    reputationEventArrayEqual(
+      prev.recentReputationEvents,
+      next.recentReputationEvents,
+    ),
+  );
   setIfDifferent(
     "lastDeleteUnitTick",
     prev.lastDeleteUnitTick === next.lastDeleteUnitTick,
@@ -194,6 +211,12 @@ export function applyStateUpdate(target: PlayerState, pu: PlayerUpdate): void {
   }
   if (pu.isDecaying !== undefined) target.isDecaying = pu.isDecaying;
   if (pu.betrayals !== undefined) target.betrayals = pu.betrayals;
+  if (pu.internationalReputation !== undefined) {
+    target.internationalReputation = pu.internationalReputation;
+  }
+  if (pu.recentReputationEvents !== undefined) {
+    target.recentReputationEvents = pu.recentReputationEvents.slice();
+  }
   if (pu.hasSpawned !== undefined) target.hasSpawned = pu.hasSpawned;
   if (pu.spawnTile !== undefined) target.spawnTile = pu.spawnTile;
   if (pu.lastDeleteUnitTick !== undefined) {
@@ -334,6 +357,27 @@ function emojiArrayEqual(a?: EmojiMessage[], b?: EmojiMessage[]): boolean {
       x.senderID !== y.senderID ||
       x.recipientID !== y.recipientID ||
       x.createdAt !== y.createdAt
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function reputationEventArrayEqual(
+  a?: readonly ReputationEvent[],
+  b?: readonly ReputationEvent[],
+): boolean {
+  if (a === b) return true;
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    const x = a[i];
+    const y = b[i];
+    if (
+      x.tick !== y.tick ||
+      x.reason !== y.reason ||
+      x.delta !== y.delta ||
+      x.targetSmallID !== y.targetSmallID
     ) {
       return false;
     }

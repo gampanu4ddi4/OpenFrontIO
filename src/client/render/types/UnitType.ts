@@ -14,6 +14,11 @@
 export const UT_TRANSPORT = "Transport" as const;
 export const UT_TRADE_SHIP = "Trade Ship" as const;
 export const UT_WARSHIP = "Warship" as const;
+export const UT_SUBMARINE = "Submarine" as const;
+export const UT_CARRIER = "Carrier" as const;
+export const UT_AIRBASE = "Airbase" as const;
+export const UT_FIGHTER = "Fighter" as const;
+export const UT_BOMBER = "Bomber" as const;
 export const UT_ATOM_BOMB = "Atom Bomb" as const;
 export const UT_HYDROGEN_BOMB = "Hydrogen Bomb" as const;
 export const UT_MIRV = "MIRV" as const;
@@ -41,6 +46,7 @@ export const STRUCTURE_TYPES: ReadonlySet<string> = new Set([
   UT_DEFENSE_POST,
   UT_SAM_LAUNCHER,
   UT_MISSILE_SILO,
+  UT_AIRBASE,
 ]);
 
 export const NUKE_TYPES: ReadonlySet<string> = new Set([
@@ -90,4 +96,11 @@ export const ALL_UNIT_TYPES = [
   UT_SAM_LAUNCHER,
   UT_MISSILE_SILO,
   UT_TRAIN,
+  // Append-only: missing atlas cells render transparently instead of shifting
+  // legacy columns; DOM labels still identify these units.
+  UT_SUBMARINE,
+  UT_CARRIER,
+  UT_AIRBASE,
+  UT_FIGHTER,
+  UT_BOMBER,
 ] as const;

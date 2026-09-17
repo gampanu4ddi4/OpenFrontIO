@@ -12,6 +12,7 @@ import { WaterPathFinder } from "../pathfinding/PathFinder";
 import { PathStatus } from "../pathfinding/types";
 import { PseudoRandom } from "../PseudoRandom";
 import { findMinimumBy } from "../Util";
+import { canDetectSubmarine } from "../game/NavalDetection";
 import { ShellExecution } from "./ShellExecution";
 
 export class WarshipExecution implements Execution {
@@ -114,8 +115,11 @@ export class WarshipExecution implements Execution {
       return;
     }
 
-    // Priority 2: Fight enemy warship if in range
-    if (this.warship.targetUnit()?.type() === UnitType.Warship) {
+    // Priority 2: Fight enemy surface ships and detected submarines in range
+    if (
+      this.warship.targetUnit()?.type() === UnitType.Warship ||
+      this.warship.targetUnit()?.type() === UnitType.Submarine
+    ) {
       this.shootTarget();
       this.patrol();
       return;
@@ -230,12 +234,21 @@ export class WarshipExecution implements Execution {
   }
 
   private findRetreatAggroTarget(): Unit | undefined {
-    return this.findBestTarget([UnitType.TransportShip, UnitType.Warship]);
+    return this.findBestTarget([
+      UnitType.TransportShip,
+      UnitType.Submarine,
+      UnitType.Warship,
+    ]);
   }
 
   private findTargetUnit(): Unit | undefined {
     return this.findBestTarget(
-      [UnitType.TransportShip, UnitType.Warship, UnitType.TradeShip],
+      [
+        UnitType.TransportShip,
+        UnitType.Submarine,
+        UnitType.Warship,
+        UnitType.TradeShip,
+      ],
       true,
     );
   }
@@ -286,6 +299,38 @@ export class WarshipExecution implements Execution {
 
       const type = unit.type();
 
+      if (
+        type === UnitType.Submarine &&
+        !canDetectSubmarine(
+          {
+            x: mg.x(this.warship.tile()),
+            y: mg.y(this.warship.tile()),
+            radius: config.submarineDetectionRadius(),
+          },
+          { x: mg.x(unit.tile()), y: mg.y(unit.tile()) },
+          mg.strategicControlRelationAt(unit.tile(), "air", owner),
+          config.maximumDetectionBasisPoints(),
+        ) &&
+        !owner.units(UnitType.Fighter).some((fighter) => {
+          const state = fighter.airUnitState().state;
+          return (
+            state === "patrolling" &&
+            canDetectSubmarine(
+              {
+                x: mg.x(fighter.tile()),
+                y: mg.y(fighter.tile()),
+                radius: config.fighterDetectionRadius(),
+              },
+              { x: mg.x(unit.tile()), y: mg.y(unit.tile()) },
+              mg.strategicControlRelationAt(unit.tile(), "air", owner),
+              config.maximumDetectionBasisPoints(),
+            )
+          );
+        })
+      ) {
+        continue;
+      }
+
       if (includeTradeShips && type === UnitType.TradeShip) {
         if (warshipComponent === undefined) {
           warshipComponent = mg.getWaterComponent(this.warship.tile());
@@ -320,7 +365,13 @@ export class WarshipExecution implements Execution {
       }
 
       const typePriority =
-        type === UnitType.TransportShip ? 0 : type === UnitType.Warship ? 1 : 2;
+        type === UnitType.TransportShip
+          ? 0
+          : type === UnitType.Submarine
+            ? 1
+            : type === UnitType.Warship
+              ? 2
+              : 3;
 
       if (
         bestUnit === undefined ||

@@ -51,6 +51,16 @@ export class DonateGoldExecution implements Execution {
 
   tick(ticks: number): void {
     if (this.gold === null) throw new Error("not initialized");
+    const supportSnapshot = {
+      recipientTroops: this.recipient.troops(),
+      recipientGold: this.recipient.gold(),
+      incomingAttack: this.recipient
+        .incomingAttacks()
+        .some(
+          (attack) =>
+            attack.isActive() && attack.attacker() !== this.sender,
+        ),
+    };
     if (
       this.sender.canDonateGold(this.recipient) &&
       this.sender.donateGold(this.recipient, this.gold)
@@ -60,6 +70,12 @@ export class DonateGoldExecution implements Execution {
       if (relationUpdate > 0) {
         this.recipient.updateRelation(this.sender, relationUpdate);
       }
+      this.sender.recordSupportReputation(
+        this.recipient,
+        "gold",
+        this.gold,
+        supportSnapshot,
+      );
 
       // Only AI nations auto-respond with emojis, human players should not
       if (

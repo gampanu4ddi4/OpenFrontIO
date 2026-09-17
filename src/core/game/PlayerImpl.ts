@@ -58,6 +58,11 @@ import {
 } from "./GameUpdates";
 import { ReadonlyTileSet, TileSet } from "./TileSet";
 import {
+  ReputationEvent,
+  ReputationLedger,
+  SupportSnapshot,
+} from "./Reputation";
+import {
   bumpTraversalGeneration,
   tileTraversalScratch,
 } from "./TileTraversalScratch";
@@ -133,6 +138,7 @@ export class PlayerImpl implements Player {
   /** Tick territory rot last took land from this player (-1 = never). */
   private rottedAtTick = -1;
   private _betrayalCount: number = 0;
+  private readonly reputation: ReputationLedger;
 
   private embargoes = new Map<PlayerID, Embargo>();
 
@@ -198,6 +204,18 @@ export class PlayerImpl implements Player {
     this._troops = toInt(startTroops);
     this._gold = mg.config().startingGold(playerInfo);
     this._pseudo_random = new PseudoRandom(simpleHash(this.playerInfo.id));
+    const config = mg.config();
+    this.reputation = new ReputationLedger(
+      config.reputationRecoveryTicks(),
+      config.badStateReputationThreshold(),
+      config.reputationSupportCooldownTicks(),
+      config.reputationSupportCap(),
+      config.reputationMinimumTroops(),
+      config.reputationMinimumGold(),
+      config.allianceBreakReputation(),
+      config.nonHostileNukeReputation(),
+      config.reputationNukeCooldownTicks(),
+    );
   }
 
   largestClusterBoundingBox: { min: Cell; max: Cell } | null;
@@ -395,6 +413,8 @@ export class PlayerImpl implements Player {
       hasSpawned: this.hasSpawned(),
       spawnTile: this._spawnTile,
       betrayals: this._betrayalCount,
+      internationalReputation: this.internationalReputation(),
+      recentReputationEvents: this.recentReputationEvents().slice(),
       lastDeleteUnitTick: this.lastDeleteUnitTick,
       isLobbyCreator: this.isLobbyCreator(),
     };
@@ -797,6 +817,12 @@ export class PlayerImpl implements Player {
     if (this.mg.config().disableAlliances()) {
       return false;
     }
+    if (
+      this.internationalReputation() <=
+      this.mg.config().badStateReputationThreshold()
+    ) {
+      return false;
+    }
     if (other === this) {
       return false;
     }
@@ -840,8 +866,50 @@ export class PlayerImpl implements Player {
     return delta >= this.mg.config().allianceRequestCooldown();
   }
 
-  breakAlliance(alliance: MutableAlliance): void {
-    this.mg.breakAlliance(this, alliance);
+  breakAlliance(
+    alliance: MutableAlliance,
+    cause: "unilateral" | "nuke" = "unilateral",
+  ): void {
+    this.mg.breakAlliance(this, alliance, cause);
+  }
+
+  internationalReputation(): number {
+    return this.reputation.value();
+  }
+
+  reputationTradeBasisPoints(): number {
+    return this.reputation.tradeBasisPoints();
+  }
+
+  recentReputationEvents(): readonly ReputationEvent[] {
+    return this.reputation.recent();
+  }
+
+  recordAllianceBreakReputation(target: Player): boolean {
+    return this.reputation.breakAlliance(this.mg.ticks(), target.smallID());
+  }
+
+  recordNonHostileNukeReputation(target: Player): boolean {
+    return this.reputation.nonHostileNuke(this.mg.ticks(), target.smallID());
+  }
+
+  recordSupportReputation(
+    target: Player,
+    kind: "troops" | "gold",
+    amount: number | bigint,
+    before: SupportSnapshot,
+  ): boolean {
+    return this.reputation.support(
+      this.mg.ticks(),
+      target.smallID(),
+      kind,
+      amount,
+      before,
+    );
+  }
+
+  recoverInternationalReputation(): void {
+    this.reputation.recover(this.mg.ticks());
   }
 
   removeAllAlliances(): void {
@@ -1577,6 +1645,8 @@ export class PlayerImpl implements Player {
       case UnitType.Port:
         return this.portSpawn(targetTile, validTiles);
       case UnitType.Warship:
+      case UnitType.Submarine:
+      case UnitType.Carrier:
         return this.warshipSpawn(targetTile);
       case UnitType.Shell:
       case UnitType.SAMMissile:
@@ -1585,6 +1655,23 @@ export class PlayerImpl implements Player {
         return canBuildTransportShip(this.mg, this, targetTile);
       case UnitType.TradeShip:
         return this.tradeShipSpawn(targetTile);
+      case UnitType.Fighter:
+      case UnitType.Bomber: {
+        const platform = this.units(UnitType.Airbase, UnitType.Carrier).find(
+          (unit) =>
+            unit.tile() === targetTile &&
+            unit.isActive() &&
+            !unit.isUnderConstruction() &&
+            (unitType === UnitType.Fighter || unit.type() === UnitType.Airbase),
+        );
+        if (platform === undefined) return false;
+        const held = this.units(UnitType.Fighter, UnitType.Bomber).filter(
+          (unit) => unit.airUnitState().platformUnitId === platform.id(),
+        ).length;
+        return held < this.mg.config().airPlatformCapacity(platform.level())
+          ? targetTile
+          : false;
+      }
       case UnitType.Train:
         return this.landBasedUnitSpawn(targetTile);
       case UnitType.MissileSilo:
@@ -1592,6 +1679,7 @@ export class PlayerImpl implements Player {
       case UnitType.SAMLauncher:
       case UnitType.City:
       case UnitType.Factory:
+      case UnitType.Airbase:
         return this.landBasedStructureSpawn(targetTile, validTiles);
       default:
         assertNever(unitType);

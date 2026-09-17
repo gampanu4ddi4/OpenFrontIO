@@ -198,14 +198,24 @@ export class TradeShipExecution implements Execution {
         .stats()
         .boatCapturedTrade(this.tradeShip!.owner(), this.origOwner, gold);
     } else {
-      this.srcPort.owner().addGold(gold, this.srcPort.tile());
-      this._dstPort.owner().addGold(gold, this._dstPort.tile());
-      this.srcPort.owner().addTradeGold(gold);
-      this._dstPort.owner().addTradeGold(gold);
+      const sourceOwner = this.srcPort.owner();
+      const targetOwner = this._dstPort.owner();
+      const sourceGold = applyBasisPoints(
+        gold,
+        sourceOwner.reputationTradeBasisPoints(),
+      );
+      const targetGold = applyBasisPoints(
+        gold,
+        targetOwner.reputationTradeBasisPoints(),
+      );
+      sourceOwner.addGold(sourceGold, this.srcPort.tile());
+      targetOwner.addGold(targetGold, this._dstPort.tile());
+      sourceOwner.addTradeGold(sourceGold);
+      targetOwner.addTradeGold(targetGold);
       // Record stats
       this.mg
         .stats()
-        .boatArriveTrade(this.srcPort.owner(), this._dstPort.owner(), gold);
+        .boatArriveTrade(sourceOwner, targetOwner, sourceGold, targetGold);
     }
     return;
   }
@@ -221,4 +231,8 @@ export class TradeShipExecution implements Execution {
   dstPort(): TileRef {
     return this._dstPort.tile();
   }
+}
+
+function applyBasisPoints(gold: bigint, basisPoints: number): bigint {
+  return (gold * BigInt(basisPoints)) / 10_000n;
 }
